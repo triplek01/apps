@@ -2,6 +2,8 @@ name: Publish Windows app
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -37,10 +39,14 @@ jobs:
       - name: Build Windows installer and ZIP
         shell: pwsh
         run: |
-          npm run dist:win:release 2>&1 | Tee-Object -FilePath windows-build.log
-          if ($LASTEXITCODE -ne 0) {
-            $detail = (Get-Content windows-build.log -Tail 20) -join "`n"
-            throw "Windows packaging failed: $detail"
+          cmd /d /c "npm run dist:win:release > windows-build.log 2>&1"
+          $buildExit = $LASTEXITCODE
+          Get-Content windows-build.log
+          if ($buildExit -ne 0) {
+            $detail = (Get-Content windows-build.log -Tail 60) -join "`n"
+            $escaped = $detail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error::Windows packaging failed: $escaped"
+            exit 1
           }
       - name: Verify executable privilege manifests
         run: node scripts/check-windows-executables.cjs
@@ -53,6 +59,7 @@ jobs:
             release/Focus-Beat-Setup-*.exe
           if-no-files-found: error
       - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
