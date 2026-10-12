@@ -9,7 +9,7 @@ on:
       tag:
         description: Existing version tag to publish
         required: true
-        default: v3.1.1
+        default: v3.1.2
 
 permissions:
   contents: write
@@ -34,13 +34,17 @@ jobs:
         run: npm ci
       - name: Test timer
         run: npm test
-      - name: Build portable Windows app
-        run: npm run dist:win:portable
+      - name: Build Windows installer and ZIP
+        run: npm run dist:win:release
+      - name: Verify executable privilege manifests
+        run: node scripts/check-windows-executables.cjs
       - name: Retain downloadable build
         uses: actions/upload-artifact@v4
         with:
           name: Focus-Beat-Windows
-          path: release/*-win.zip
+          path: |
+            release/*-win.zip
+            release/Focus-Beat-Setup-*.exe
           if-no-files-found: error
       - name: Publish release
         shell: pwsh
@@ -50,10 +54,12 @@ jobs:
         run: |
           $archive = Get-ChildItem 'release/*-win.zip' | Select-Object -First 1
           if (-not $archive) { throw 'Windows ZIP is missing' }
+          $installer = Get-ChildItem 'release/Focus-Beat-Setup-*.exe' | Select-Object -First 1
+          if (-not $installer) { throw 'Windows installer is missing' }
           gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
-            gh release upload $env:RELEASE_TAG $archive.FullName --repo $env:GITHUB_REPOSITORY --clobber
+            gh release upload $env:RELEASE_TAG $archive.FullName $installer.FullName --repo $env:GITHUB_REPOSITORY --clobber
           } else {
-            gh release create $env:RELEASE_TAG $archive.FullName --repo $env:GITHUB_REPOSITORY --verify-tag --title "Focus Beat $env:RELEASE_TAG" --notes "Study and Work now default to 25-minute focus sessions, 5-minute short breaks, and 15-minute long breaks. Saved Study profiles still using the old default timing update automatically; customized timings are preserved. Includes activity checklists, distinct sound mixes, and animated themes. Download the ZIP, extract all files, and launch Focus Beat.exe. This build is unsigned."
+            gh release create $env:RELEASE_TAG $archive.FullName $installer.FullName --repo $env:GITHUB_REPOSITORY --verify-tag --title "Focus Beat $env:RELEASE_TAG" --notes "Download Focus-Beat-Setup to install Focus Beat for your Windows account without extracting a ZIP. The installer and app run without requesting administrator privileges during normal installation and launch. This build is unsigned, so Windows may show an Unknown publisher or SmartScreen warning. The optional ZIP is also available. Includes activity checklists, 120 tracks, distinct profile mixes, animated themes, and 25/5/15 Study and Work defaults."
           }
           if ($LASTEXITCODE -ne 0) { throw 'GitHub release publication failed' }

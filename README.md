@@ -33,9 +33,11 @@ npm run desktop
 npm run dist:win:portable
 ```
 
-Extract the ZIP from `release/`, then launch `Focus Beat.exe`. Keep all extracted files together. For an installer, run `npm run dist:win` on Windows (or Linux with Wine). Builds are unsigned.
+Download `Focus-Beat-Setup-VERSION.exe` from the GitHub release for a single-file Windows installer. It installs for the current user, normally under `%LOCALAPPDATA%\Programs\Focus Beat`, creates shortcuts, and supports uninstalling through Windows Settings. Normal installation and launch do not request administrator privileges. Builds are unsigned; Windows may show Unknown publisher or SmartScreen warnings.
 
-GitHub Actions publishes a Windows ZIP when a version tag is pushed. Do not push a release tag before the design has been reviewed.
+The optional ZIP can still be extracted and launched using `Focus Beat.exe`; keep all extracted files together. Build the installer with `npm run dist:win` on Windows (or Linux with Wine), or build both installer and ZIP with `npm run dist:win:release`.
+
+GitHub Actions publishes a per-user Windows installer and ZIP when a version tag is pushed. Do not push a release tag before the design has been reviewed.
 
 ## Validate
 
