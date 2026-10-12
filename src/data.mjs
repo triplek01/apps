@@ -17,7 +17,9 @@ export function cleanMix(raw = {}) {
 }
 export function cleanData(raw) {
   if (!raw || ![1,2].includes(raw.schemaVersion)) throw new Error('This is not a supported Focus Beat backup.');
-  const s = raw.settings ?? {};
+  const original = raw.settings ?? {};
+  const oldStudyDefaults=original.activity==='study'&&original.durations?.focus===50&&original.durations?.break===10&&original.durations?.long===20;
+  const s=oldStudyDefaults?{...original,durations:{focus:25,break:5,long:15}}:original;
   const settings = { ...DEFAULT_SETTINGS, ...cleanMix(s),
     durations: Object.fromEntries(Object.entries(DEFAULT_SETTINGS.durations).map(([key,value]) => [key, Math.round(number(s.durations?.[key], value, 1, 180))])),
     shuffle: bool(s.shuffle, true), tickEnabled: bool(s.tickEnabled, true), breakVolume: number(s.breakVolume, .25, 0, 1),
@@ -31,7 +33,7 @@ export function cleanData(raw) {
     goal: text(s.goal), outcome: ['done','progress','not_done'].includes(s.outcome) ? s.outcome : null,
     trackTitle: text(s.trackTitle,80), mixName: text(s.mixName,60), mood: text(s.mood,60),
   })) : [];
-  const profiles=Object.fromEntries(['study','work','chores','creative'].filter(id=>raw.profiles?.[id]&&typeof raw.profiles[id]==='object').map(id=>[id,cleanData({schemaVersion:1,settings:raw.profiles[id]}).settings]));
+  const profiles=Object.fromEntries(['study','work','chores','creative'].filter(id=>raw.profiles?.[id]&&typeof raw.profiles[id]==='object').map(id=>[id,cleanData({schemaVersion:1,settings:{...raw.profiles[id],activity:id}}).settings]));
   const tasks=Array.isArray(raw.tasks)?raw.tasks.filter(t=>t&&typeof t.id==='string'&&text(t.title).trim()&&['study','work','chores','creative'].includes(t.activity)).map(t=>({id:text(t.id,80),title:text(t.title).trim(),done:bool(t.done,false),activity:t.activity})):settings.goalDraft.trim()?[{id:'legacy-goal',title:settings.goalDraft.trim(),done:false,activity:settings.activity}]:[];
   return { schemaVersion: 2, settings, presets, sessions, profiles, tasks };
 }

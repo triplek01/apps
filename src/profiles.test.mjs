@@ -1,7 +1,8 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {ACTIVITIES,activityTracks} from './profiles.mjs';import {TRACKS} from './music.mjs';import {advanceInPool} from './playlist.mjs';import {cleanData} from './data.mjs';import {milestones,summarize} from './insights.mjs';
 test('activity defaults match the requested sessions and sound styles',()=>{
- assert.deepEqual(ACTIVITIES.map(p=>[p.id,p.durations.focus,p.durations.break,p.autoBreaks]),[['study',50,10,true],['work',25,5,true],['chores',15,5,true],['creative',60,10,false]]);
+ assert.deepEqual(ACTIVITIES.map(p=>[p.id,p.durations.focus,p.durations.break,p.autoBreaks]),[['study',25,5,true],['work',25,5,true],['chores',15,5,true],['creative',60,10,false]]);
+ for(const id of ['study','work'])assert.deepEqual(ACTIVITIES.find(p=>p.id===id).durations,{focus:25,break:5,long:15});
  assert.equal(new Set(ACTIVITIES.map(p=>p.theme)).size,4);
  for(const profile of ACTIVITIES){const pool=activityTracks(profile.id);assert.ok(pool.length>=17);assert.ok(pool.includes(profile.mix.trackId));assert.ok(pool.every(id=>profile.styles.includes(TRACKS[id].style)));}
 });

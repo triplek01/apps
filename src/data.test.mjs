@@ -20,3 +20,9 @@ test('activity checklists survive backups and legacy goals migrate only once',()
  const data=cleanData(raw);assert.equal(data.tasks.length,2);assert.equal(data.tasks[0].title,'Read chapter');assert.equal(data.tasks[0].done,true);assert.equal(data.tasks[1].activity,'chores');assert.deepEqual(cleanData(JSON.parse(JSON.stringify(data))),data);
  const migrated=cleanData({schemaVersion:1,settings:{activity:'study',goalDraft:'Read a page'}});assert.deepEqual(migrated.tasks,[{id:'legacy-goal',title:'Read a page',done:false,activity:'study'}]);migrated.tasks=[];assert.deepEqual(cleanData(migrated).tasks,[]);
 });
+
+test('old Study default timings update while customized profiles and history survive',()=>{
+ const raw={schemaVersion:2,settings:{activity:'study',durations:{focus:50,break:10,long:20}},profiles:{study:{durations:{focus:50,break:10,long:20},volume:.7},work:{durations:{focus:40,break:8,long:18}}},tasks:[{id:'task',title:'Read',activity:'study',done:false}]};
+ const data=cleanData(raw);assert.deepEqual(data.settings.durations,{focus:25,break:5,long:15});assert.deepEqual(data.profiles.study.durations,{focus:25,break:5,long:15});assert.equal(data.profiles.study.volume,.7);assert.deepEqual(data.profiles.work.durations,{focus:40,break:8,long:18});assert.equal(data.tasks[0].title,'Read');
+ raw.profiles.study.durations.focus=45;assert.equal(cleanData(raw).profiles.study.durations.focus,45);
+});

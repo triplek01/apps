@@ -9,7 +9,7 @@ on:
       tag:
         description: Existing version tag to publish
         required: true
-        default: v3.1.0
+        default: v3.1.1
 
 permissions:
   contents: write
@@ -54,6 +54,6 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             gh release upload $env:RELEASE_TAG $archive.FullName --repo $env:GITHUB_REPOSITORY --clobber
           } else {
-            gh release create $env:RELEASE_TAG $archive.FullName --repo $env:GITHUB_REPOSITORY --verify-tag --title "Focus Beat $env:RELEASE_TAG" --notes "New Tasks tab between Sound Studio and Progress, with offline checklists for each activity. Add, edit, complete, reopen, delete, and filter tasks, or select one as your focus goal. Checklists are saved locally and included in backups. Existing goal drafts migrate into tasks. Pace adjustment has been removed. Includes all previous activity mixes and stronger animated waves. Download the ZIP, extract all files, and launch Focus Beat.exe. This build is unsigned."
+            gh release create $env:RELEASE_TAG $archive.FullName --repo $env:GITHUB_REPOSITORY --verify-tag --title "Focus Beat $env:RELEASE_TAG" --notes "Study and Work now default to 25-minute focus sessions, 5-minute short breaks, and 15-minute long breaks. Saved Study profiles still using the old default timing update automatically; customized timings are preserved. Includes activity checklists, distinct sound mixes, and animated themes. Download the ZIP, extract all files, and launch Focus Beat.exe. This build is unsigned."
           }
           if ($LASTEXITCODE -ne 0) { throw 'GitHub release publication failed' }
