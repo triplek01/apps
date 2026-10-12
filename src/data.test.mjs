@@ -26,3 +26,11 @@ test('old Study default timings update while customized profiles and history sur
  const data=cleanData(raw);assert.deepEqual(data.settings.durations,{focus:25,break:5,long:15});assert.deepEqual(data.profiles.study.durations,{focus:25,break:5,long:15});assert.equal(data.profiles.study.volume,.7);assert.deepEqual(data.profiles.work.durations,{focus:40,break:8,long:18});assert.equal(data.tasks[0].title,'Read');
  raw.profiles.study.durations.focus=45;assert.equal(cleanData(raw).profiles.study.durations.focus,45);
 });
+
+test('removed pace presets no longer override Study and Work defaults',()=>{
+ for(const activity of ['study','work']){
+  const raw={schemaVersion:2,settings:{activity,mood:'sprint',durations:{focus:10,break:3,long:10},volume:.7},profiles:{[activity]:{activity,mood:'sprint',durations:{focus:10,break:3,long:10},volume:.6}},tasks:[{id:'task',title:'Keep task',done:false,activity}],sessions:[{id:'session',startedAt:1000,endedAt:61000,seconds:60,status:'completed'}]};
+  const data=cleanData(raw);assert.deepEqual(data.settings.durations,{focus:25,break:5,long:15});assert.deepEqual(data.profiles[activity].durations,{focus:25,break:5,long:15});assert.equal(data.profiles[activity].mood,'custom');assert.equal(data.profiles[activity].volume,.6);assert.equal(data.tasks[0].title,'Keep task');assert.equal(data.sessions.length,1);
+  data.profiles[activity].durations={focus:10,break:3,long:10};assert.deepEqual(cleanData(data).profiles[activity].durations,{focus:10,break:3,long:10});
+ }
+});

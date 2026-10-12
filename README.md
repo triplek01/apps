@@ -69,3 +69,5 @@ Each profile remembers its own timer, audio, theme, and animation preferences. C
 Profile themes animate by default. Animation On explicitly enables visibly morphing waves even if Windows requests reduced motion; Off stops movement; Follow system respects the operating-system setting. Saved On/Off choices remain specific to each activity.
 
 Data schema version 2 preserves version-one settings, sessions, and mixes during migration. Version-one backups can still be restored. Older app versions will not automatically overwrite the newer data format.
+
+Saved Study and Work timings from the removed Ease in, Deep work, and Short sprint pace presets migrate to 25/5/15 when they still match those presets. Manually customized timings remain available.

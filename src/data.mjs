@@ -19,7 +19,10 @@ export function cleanData(raw) {
   if (!raw || ![1,2].includes(raw.schemaVersion)) throw new Error('This is not a supported Focus Beat backup.');
   const original = raw.settings ?? {};
   const oldStudyDefaults=original.activity==='study'&&original.durations?.focus===50&&original.durations?.break===10&&original.durations?.long===20;
-  const s=oldStudyDefaults?{...original,durations:{focus:25,break:5,long:15}}:original;
+  const legacyPaces={ease:{focus:15,break:5,long:15},deep:{focus:45,break:10,long:20},sprint:{focus:10,break:3,long:10}};
+  const pace=legacyPaces[original.mood];
+  const oldPace=['study','work'].includes(original.activity)&&pace&&['focus','break','long'].every(key=>original.durations?.[key]===pace[key]);
+  const s=oldStudyDefaults||oldPace?{...original,durations:{focus:25,break:5,long:15},mood:'custom'}:original;
   const settings = { ...DEFAULT_SETTINGS, ...cleanMix(s),
     durations: Object.fromEntries(Object.entries(DEFAULT_SETTINGS.durations).map(([key,value]) => [key, Math.round(number(s.durations?.[key], value, 1, 180))])),
     shuffle: bool(s.shuffle, true), tickEnabled: bool(s.tickEnabled, true), breakVolume: number(s.breakVolume, .25, 0, 1),

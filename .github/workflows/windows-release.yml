@@ -9,7 +9,7 @@ on:
       tag:
         description: Existing version tag to publish
         required: true
-        default: v3.1.2
+        default: v3.1.3
 
 permissions:
   contents: write
@@ -60,6 +60,6 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             gh release upload $env:RELEASE_TAG $archive.FullName $installer.FullName --repo $env:GITHUB_REPOSITORY --clobber
           } else {
-            gh release create $env:RELEASE_TAG $archive.FullName $installer.FullName --repo $env:GITHUB_REPOSITORY --verify-tag --title "Focus Beat $env:RELEASE_TAG" --notes "Download Focus-Beat-Setup to install Focus Beat for your Windows account without extracting a ZIP. The installer and app run without requesting administrator privileges during normal installation and launch. This build is unsigned, so Windows may show an Unknown publisher or SmartScreen warning. The optional ZIP is also available. Includes activity checklists, 120 tracks, distinct profile mixes, animated themes, and 25/5/15 Study and Work defaults."
+            gh release create $env:RELEASE_TAG $archive.FullName $installer.FullName --repo $env:GITHUB_REPOSITORY --verify-tag --title "Focus Beat $env:RELEASE_TAG" --notes "Download Focus-Beat-Setup to install Focus Beat for your Windows account without extracting a ZIP. The installer and app run without requesting administrator privileges during normal installation and launch. This build is unsigned, so Windows may show an Unknown publisher or SmartScreen warning. The optional ZIP is also available. Fixes saved Study and Work profiles retaining 10/3/10 from the removed Short sprint preset: old pace preset timings now migrate to 25/5/15 while keeping tasks, history, and audio preferences. Includes activity checklists, 120 tracks, distinct profile mixes, and animated themes."
           }
           if ($LASTEXITCODE -ne 0) { throw 'GitHub release publication failed' }
