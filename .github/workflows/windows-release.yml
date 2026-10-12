@@ -35,7 +35,13 @@ jobs:
       - name: Test timer
         run: npm test
       - name: Build Windows installer and ZIP
-        run: npm run dist:win:release
+        shell: pwsh
+        run: |
+          npm run dist:win:release 2>&1 | Tee-Object -FilePath windows-build.log
+          if ($LASTEXITCODE -ne 0) {
+            $detail = (Get-Content windows-build.log -Tail 20) -join "`n"
+            throw "Windows packaging failed: $detail"
+          }
       - name: Verify executable privilege manifests
         run: node scripts/check-windows-executables.cjs
       - name: Retain downloadable build
