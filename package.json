@@ -1,6 +1,6 @@
 {
   "name": "focus-beat",
-  "version": "3.1.3",
+  "version": "3.1.4",
   "private": true,
   "description": "Pomodoro desktop timer with focus and break audio",
   "author": "Focus Beat",
@@ -12,7 +12,7 @@
     "dist:win": "npm run build && electron-builder --win nsis",
     "test": "node --test",
     "dist:win:portable": "npm run build && electron-builder --win zip -c.win.signAndEditExecutable=false",
-    "dist:win:release": "npm run build && electron-builder --win nsis zip"
+    "dist:win:release": "npm run build && electron-builder --win nsis zip --publish never"
   },
   "build": {
     "appId": "com.focusbeat.desktop",
