@@ -9,7 +9,7 @@ on:
       tag:
         description: Existing version tag to publish
         required: true
-        default: v1.3.0
+        default: v2.0.0
 
 permissions:
   contents: write
@@ -54,6 +54,6 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             gh release upload $env:RELEASE_TAG $archive.FullName --repo $env:GITHUB_REPOSITORY --clobber
           } else {
-            gh release create $env:RELEASE_TAG $archive.FullName --repo $env:GITHUB_REPOSITORY --verify-tag --title "Focus Beat $env:RELEASE_TAG" --notes "Animated Windows Pomodoro app with gently moving waves, an animation on/off control, 30 generated melodic focus tracks, shuffle and skip, separate music and binaural volumes, and optional soft clock ticking during breaks. Download the ZIP, extract all files, and launch Focus Beat.exe. Stereo headphones are recommended. This build is unsigned."
+            gh release create $env:RELEASE_TAG $archive.FullName --repo $env:GITHUB_REPOSITORY --verify-tag --title "Focus Beat $env:RELEASE_TAG" --notes "Offline focus studio with 30 music tracks, mixable atmosphere layers and saved presets, session goals, adjustable mood presets, local analytics and history, optional reactive visuals, gentle milestones and themes, and optional guided breaks. Settings and data stay on your computer, with exportable backups. Download the ZIP, extract all files, and launch Focus Beat.exe. Stereo headphones are recommended for binaural tones. This build is unsigned. Focus Together is reserved for a future release."
           }
           if ($LASTEXITCODE -ne 0) { throw 'GitHub release publication failed' }

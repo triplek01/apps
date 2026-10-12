@@ -1,3 +1,4 @@
+import { createSoundscape } from './soundscape.js';
 import { arrangement, frequency, stepDuration, TRACKS } from './music.mjs';
 const voices = {
   pad: { harmonics: [1,2], levels: [1,.14], attack: 1.4, sustain: true },
@@ -9,7 +10,7 @@ const voices = {
   bass: { harmonics: [1,2], levels: [1,.15], attack: .025 },
 };
 export class SessionAudio {
-  async start(mode, musicVolume, beat, binauralLevel = .35, trackId = 0, onEnd = () => {}, offset = 0, breakVolume = .25) {
+  async start(mode, musicVolume, beat, binauralLevel = .35, trackId = 0, onEnd = () => {}, offset = 0, breakVolume = .25, layers = {}) {
     this.stop();
     const track = TRACKS[trackId];
     const ctx = new AudioContext(); this.ctx = ctx; this.offset = offset;
@@ -33,7 +34,8 @@ export class SessionAudio {
       };
       schedule(); this.interval = setInterval(schedule, 100); return;
     }
-    const limiter = ctx.createDynamicsCompressor(); limiter.threshold.value = -14; limiter.knee.value = 18; limiter.ratio.value = 4; limiter.connect(ctx.destination);
+    const limiter = ctx.createDynamicsCompressor(); limiter.threshold.value = -14; limiter.knee.value = 18; limiter.ratio.value = 4; this.analyser = ctx.createAnalyser(); this.analyser.fftSize = 256; limiter.connect(this.analyser); this.analyser.connect(ctx.destination);
+    this.studio = createSoundscape(ctx, limiter); this.studio.setLevels(layers);
     const music = ctx.createGain(); music.gain.value = musicVolume * .8; music.connect(limiter); this.music = music;
     const reverb = ctx.createConvolver();
     const impulse = ctx.createBuffer(2, Math.floor(ctx.sampleRate * 2.5), ctx.sampleRate);
@@ -91,13 +93,15 @@ export class SessionAudio {
     };
     schedule(); this.interval = setInterval(schedule, 50);
   }
+  getEnergy() { if (!this.analyser) return 0; const samples = new Float32Array(this.analyser.fftSize); this.analyser.getFloatTimeDomainData(samples); return Math.min(1, Math.sqrt(samples.reduce((sum,v) => sum + v*v,0)/samples.length)*7); }
+  setLayers(layers) { this.studio?.setLevels(layers); }
   getPosition() { return this.ctx ? this.offset + this.ctx.currentTime : 0; }
   setVolume(volume) { if (this.music) this.music.gain.setTargetAtTime(volume * .8, this.ctx.currentTime, .05); }
   setBreakVolume(volume) { if (this.clock) this.clock.gain.setTargetAtTime(volume, this.ctx.currentTime, .05); }
   setBinauralLevel(level) { this.binaural?.forEach(gain => gain.gain.setTargetAtTime(level * .055, this.ctx.currentTime, .1)); }
   stop() {
     clearInterval(this.interval); this.interval = null;
-    const ctx = this.ctx; this.ctx = null; this.music = null; this.binaural = null; this.clock = null;
+    const ctx = this.ctx; this.ctx = null; this.music = null; this.binaural = null; this.clock = null; this.studio = null; this.analyser = null;
     if (ctx && ctx.state !== 'closed') ctx.close().catch(() => {});
   }
 }

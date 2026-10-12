@@ -6,6 +6,11 @@ import { advanceTrack } from './playlist.mjs';
 import { nextSession, remainingSeconds } from './timer.mjs';
 import '@fontsource-variable/inter';
 import './style.css';
+import Studio from './Studio';
+import Progress from './Progress';
+import BreakGuide from './BreakGuide';
+import {cleanData,cleanMix,loadData,saveData} from './data.mjs';
+import {MOODS,summarize} from './insights.mjs';
 const labels = { focus: 'Focus', break: 'Short break', long: 'Long break' };
 const paths = {
   music: 'M9 18V5l12-2v13 M9 8l12-2 M9 18c0 2-6 3-6 0s6-3 6 0 M21 16c0 2-6 3-6 0s6-3 6 0',
@@ -20,10 +25,9 @@ function Icon({name, ...props}) { return <svg viewBox="0 0 24 24" fill="none" st
 function Atmosphere() {
   return <div className="atmosphere" aria-hidden="true"><svg viewBox="0 0 1553 1013" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="wave" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#6960a3" stopOpacity=".2"/><stop offset=".55" stopColor="#26273f" stopOpacity=".1"/><stop offset="1" stopColor="#9e78da" stopOpacity=".16"/></linearGradient><filter id="glow"><feGaussianBlur stdDeviation="13"/></filter></defs><g className="wave-layer wave-upper"><path className="wave-glow" d="M-50 205C215 105 216 370 455 354S645 481 861 451 1109 253 1553-32"/><path fill="url(#wave)" d="M-50 205C215 105 216 370 455 354S645 481 861 451 1109 253 1553-32V-50H-50Z"/><path className="wave-edge" d="M-50 205C215 105 216 370 455 354S645 481 861 451 1109 253 1553-32"/></g><g className="wave-layer wave-lower"><path fill="url(#wave)" d="M-60 1020C119 660 278 797 466 733S793 898 974 591 1260 626 1610 162V1060Z"/><path className="wave-edge lower" d="M-60 1020C119 660 278 797 466 733S793 898 974 591 1260 626 1610 162"/></g>{Array.from({length:45},(_,i)=><circle className="star" style={{'--star-delay':`${i%9*-1.1}s`,'--star-opacity':i%3===0?.55:.2}} key={i} cx={(i*347+73)%1553} cy={(i*191+69)%1013} r={i%5===0?1.5:.8} fill="#d5b5ff" opacity={i%3===0?.55:.2}/>)}</svg></div>;
 }
-function App() {
-  const [animations, setAnimations] = useState(() => {
-    try { return localStorage.getItem('focus-beat-motion') !== 'off'; } catch { return true; }
-  });
+function App({initial}) {
+  const seed = initial.data.settings;
+  const [animations, setAnimations] = useState(seed.animations);
   const [reducedMotion, setReducedMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
   useEffect(() => {
     const preference = matchMedia('(prefers-reduced-motion: reduce)');
@@ -36,13 +40,21 @@ function App() {
     try { localStorage.setItem('focus-beat-motion', next ? 'on' : 'off'); } catch {}
   }
   const motionEnabled = animations && !reducedMotion;
-  const [durations, setDurations] = useState({ focus: 25, break: 5, long: 15 });
-  const [mode, setMode] = useState('focus'); const [rounds, setRounds] = useState(0);
-  const [remaining, setRemaining] = useState(1500); const [running, setRunning] = useState(false);
-  const [volume, setVolume] = useState(.4); const [binauralLevel, setBinauralLevel] = useState(.35);
-  const [beat, setBeat] = useState(10); const [muted, setMuted] = useState(false);
-  const [tickEnabled, setTickEnabled] = useState(true); const [breakVolume, setBreakVolume] = useState(.25);
-  const [trackId, setTrackId] = useState(0); const [shuffle, setShuffle] = useState(true);
+  const [durations, setDurations] = useState(seed.durations);
+  const [mode, setMode] = useState('focus'); const [rounds, setRounds] = useState(summarize(initial.data.sessions).completed);
+  const [remaining, setRemaining] = useState(seed.durations.focus*60); const [running, setRunning] = useState(false);
+  const [volume, setVolume] = useState(seed.volume); const [binauralLevel, setBinauralLevel] = useState(seed.binauralLevel);
+  const [beat, setBeat] = useState(seed.beat); const [muted, setMuted] = useState(false);
+  const [tickEnabled, setTickEnabled] = useState(seed.tickEnabled); const [breakVolume, setBreakVolume] = useState(seed.breakVolume);
+  const [trackId, setTrackId] = useState(seed.trackId); const [shuffle, setShuffle] = useState(seed.shuffle);
+  const [view,setView]=useState('focus'); const [breakActivity,setBreakActivity]=useState(seed.breakActivity);
+  const [layers,setLayers]=useState(seed.layers);const [presets,setPresets]=useState(initial.data.presets);
+  const [sessions,setSessions]=useState(initial.data.sessions);const [goal,setGoal]=useState(seed.goalDraft);
+  const [activeMix,setActiveMix]=useState(seed.activeMix);const [mood,setMood]=useState(seed.mood);
+  const [reactive,setReactive]=useState(seed.reactive);const [theme,setTheme]=useState(seed.theme);const [showRewards,setShowRewards]=useState(seed.showRewards);
+  const [pendingGoal,setPendingGoal]=useState(null);const [pendingImport,setPendingImport]=useState(null);
+  const [storageError,setStorageError]=useState(initial.error);const [storageBlocked,setStorageBlocked]=useState(initial.blocked);
+  const sessionStart=useRef(null);const appElement=useRef(null);
   const [error, setError] = useState('');
   const deadline = useRef(0); const audio = useRef(new SessionAudio()); const queue = useRef([]);
   const position = useRef({ id: 0, seconds: 0 }); const onTrackEnd = useRef(null);
@@ -53,17 +65,39 @@ function App() {
   }
   onTrackEnd.current = nextTrack;
   function selectTrack(id) { queue.current = []; setTrackId(id); }
-  function switchTo(next) {
+  const settings={animations,breakActivity,durations,volume,binauralLevel,beat,trackId,shuffle,tickEnabled,breakVolume,layers,reactive,theme,showRewards,goalDraft:goal,activeMix,mood};
+  const data={schemaVersion:1,settings,presets,sessions};
+  useEffect(()=>{
+    if(storageBlocked)return;
+    saveData(data).then(()=>setStorageError('')).catch(()=>setStorageError('Your latest changes could not be saved. Export a backup from Progress to keep them.'));
+  },[animations,breakActivity,durations,volume,binauralLevel,beat,trackId,shuffle,tickEnabled,breakVolume,layers,reactive,theme,showRewards,goal,activeMix,mood,presets,sessions,storageBlocked]);
+  function setMix(next) {
+    const mix=cleanMix(next);setVolume(mix.volume);setBinauralLevel(mix.binauralLevel);setBeat(mix.beat);setTrackId(mix.trackId);setLayers(mix.layers);setActiveMix('Custom mix');
+    if(mix.trackId!==trackId)queue.current=[];
+  }
+  function applyMix(mix,name){setMix(mix);setActiveMix(name);}
+  function finishSession(status) {
+    if(mode!=='focus'||!sessionStart.current)return;
+    const seconds=Math.max(0,Math.min(durations.focus*60,durations.focus*60-(running?remainingSeconds(deadline.current,Date.now()):remaining)));
+    if(seconds>0){const session={id:crypto.randomUUID(),startedAt:sessionStart.current,endedAt:Date.now(),seconds,plannedMinutes:durations.focus,status,goal:goal.trim(),outcome:null,trackTitle:track.title,mixName:activeMix,mood};setSessions(old=>[...old,session]);if(status==='completed'&&session.goal){setPendingGoal(session);setGoal('');}}
+    sessionStart.current=null;
+  }
+  function applyMood(id){const preset=MOODS.find(m=>m.id===id);if(!preset)return;finishSession('reset');setDurations(preset.durations);setRemaining(preset.durations[mode]*60);applyMix(preset.mix,preset.label);setMood(id);}
+  function exportBackup(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='focus-beat-backup.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  async function restoreBackup(file){try{setPendingImport(cleanData(JSON.parse(await file.text())));}catch{setStorageError('That file is not a valid Focus Beat backup. Your current data has not changed.');}}
+  function confirmRestore(){const restored=pendingImport;const s=restored.settings;setAnimations(s.animations);setBreakActivity(s.breakActivity);setRunning(false);sessionStart.current=null;position.current={id:s.trackId,seconds:0};setDurations(s.durations);setRemaining(s.durations.focus*60);setMode('focus');setMix(s);setShuffle(s.shuffle);setTickEnabled(s.tickEnabled);setBreakVolume(s.breakVolume);setReactive(s.reactive);setTheme(s.theme);setShowRewards(s.showRewards);setGoal(s.goalDraft);setActiveMix(s.activeMix);setMood(s.mood);setPresets(restored.presets);setSessions(restored.sessions);setRounds(summarize(restored.sessions).completed);setPendingImport(null);setPendingGoal(null);setStorageBlocked(false);}
+  function switchTo(next, automatic=false) {
+    if(!automatic)finishSession('switched');
     if (next === 'focus' && !focus) nextTrack();
     setMode(next); setRemaining(durations[next] * 60);
-    if (running) deadline.current = Date.now() + durations[next] * 60000;
+    if (running) { deadline.current = Date.now() + durations[next] * 60000; if(next==='focus')sessionStart.current=Date.now(); }
   }
-  function advance() { const next = nextSession(mode, rounds); setRounds(next.rounds); switchTo(next.mode); }
+  function advance(completed=false) { finishSession(completed?'completed':'skipped'); const next=completed||mode!=='focus'?nextSession(mode,rounds):{mode:'break',rounds};setRounds(next.rounds);switchTo(next.mode,true); }
   useEffect(() => {
     if (!running) return;
     const id = setInterval(() => {
       const seconds = remainingSeconds(deadline.current, Date.now()); setRemaining(seconds);
-      if (!seconds) advance();
+      if (!seconds) advance(true);
     }, 200);
     return () => clearInterval(id);
   }, [running, mode, rounds, durations]);
@@ -71,7 +105,7 @@ function App() {
     setError('');
     if (running && (focus ? !muted : tickEnabled)) {
       const offset = focus && position.current.id === trackId ? Math.min(position.current.seconds, track.duration - .1) : 0;
-      audio.current.start(mode, volume, beat, binauralLevel, trackId, () => onTrackEnd.current(), offset, breakVolume)
+      audio.current.start(mode, volume, beat, binauralLevel, trackId, () => onTrackEnd.current(), offset, breakVolume, layers)
         .catch(() => setError('Audio could not start. Pause and try again.'));
     } else audio.current.stop();
     return () => {
@@ -82,21 +116,37 @@ function App() {
   useEffect(() => { audio.current.setVolume(volume); }, [volume]);
   useEffect(() => { audio.current.setBinauralLevel(binauralLevel); }, [binauralLevel]);
   useEffect(() => { audio.current.setBreakVolume(breakVolume); }, [breakVolume]);
-  function toggle() { if (!running) deadline.current = Date.now() + remaining * 1000; setRunning(!running); }
+  useEffect(()=>{audio.current.setLayers(layers);},[layers]);
+  useEffect(()=>{
+    const element=appElement.current;if(!element)return;
+    element.style.setProperty('--energy','0');
+    if(!running||!motionEnabled||!reactive||view!=='focus')return;
+    const id=setInterval(()=>element.style.setProperty('--energy',String(audio.current.getEnergy())),100);return()=>clearInterval(id);
+  },[running,motionEnabled,reactive,mode,view]);
+  function toggle() { if (!running && mode==='focus' && !sessionStart.current) sessionStart.current=Date.now(); if (!running) deadline.current = Date.now() + remaining * 1000; setRunning(!running); }
   const progress = Math.max(0, Math.min(100, 100 * (1 - remaining / (durations[mode] * 60))));
   const rangeStyle = value => ({ '--fill': `${value * 100}%` });
-  return <div className={motionEnabled ? 'app motion-on' : 'app motion-off'}><Atmosphere/><main>
+  return <div ref={appElement} className={`app theme-${theme} ${focus?'scene-focus':'scene-break'} ${motionEnabled?'motion-on':'motion-off'}`}><Atmosphere/><main>
     <header><div className="brand"><span className="logo"/>FOCUS BEAT</div><div className="header-tools"><span className="badge">YOUR TIME, IN TUNE</span><button className="motion-toggle" aria-pressed={motionEnabled} disabled={reducedMotion} title={reducedMotion ? 'Your system’s reduced-motion setting pauses animation' : 'Toggle ambient animation'} onClick={toggleAnimation}>Animation {motionEnabled ? 'on' : 'off'}</button></div></header>
-    <section className="intro"><p className="eyebrow">A LITTLE RHYTHM. A LOT OF FOCUS.</p><h1>Find your flow.</h1><p>Make room for deep work. Take a break that’s yours.</p></section>
+    <div className="app-nav" role="tablist" aria-label="App sections">{[['focus','Focus'],['studio','Sound Studio'],['progress','Progress']].map(([id,label])=><button role="tab" id={`view-${id}`} aria-selected={view===id} tabIndex={view===id?0:-1} key={id} onKeyDown={e=>{const list=['focus','studio','progress'];let index=list.indexOf(id);if(e.key==='ArrowRight')index=(index+1)%3;else if(e.key==='ArrowLeft')index=(index+2)%3;else if(e.key==='Home')index=0;else if(e.key==='End')index=2;else return;e.preventDefault();setView(list[index]);document.getElementById(`view-${list[index]}`).focus();}} onClick={()=>setView(id)}>{label}</button>)}</div>
+    {view!=='focus'&&<div className="mini-session"><span>{labels[mode]} · {String(Math.floor(remaining/60)).padStart(2,'0')}:{String(remaining%60).padStart(2,'0')}</span><button className="small-primary" onClick={toggle}>{running?'Pause session':'Start session'}</button><button className="text-button" onClick={()=>setView('focus')}>Back to timer</button></div>}
+    {storageError&&<p className="storage-banner" role="alert">{storageError}</p>}
+    {pendingImport&&<div className="glass restore-confirm" role="alert"><p>Restore {pendingImport.sessions.length} sessions and {pendingImport.presets.length} saved mixes? This replaces your current data. Export a backup first if you want to keep it.</p><button className="small-primary" onClick={confirmRestore}>Replace my data</button><button className="text-button" onClick={()=>setPendingImport(null)}>Cancel</button></div>}
+    <div role="tabpanel" aria-labelledby={`view-${view}`}>
+    <section className="intro"><p className="eyebrow">A LITTLE RHYTHM. A LOT OF FOCUS.</p><h1>{view==='focus'?'Find your flow.':view==='studio'?'Make it your own.':'A little progress, every day.'}</h1><p>{view==='focus'?'Make room for deep work. Take a break that’s yours.':view==='studio'?'Your music. Your atmosphere. Your space.':'Notice your rhythm, without judging your pace.'}</p></section>
+    {view==='focus'&&<>
+    <div className="session-prep glass"><label htmlFor="session-goal">What are you working on?<input id="session-goal" placeholder="One small thing is enough (optional)" maxLength="200" value={goal} disabled={running} onChange={e=>setGoal(e.target.value)}/></label><label htmlFor="mood">Set your pace<select id="mood" value={mood} disabled={running} onChange={e=>applyMood(e.target.value)}><option value="custom">Your settings</option>{MOODS.map(m=><option value={m.id} key={m.id}>{m.label}</option>)}</select></label></div>
     <section className="timer glass">
+      {reactive&&<div className="audio-orb" aria-hidden="true"/>}
       <svg className="panel-wave" viewBox="0 0 970 450" preserveAspectRatio="none" aria-hidden="true"><path d="M-10 350C160 300 146 145 346 230S592 281 739 165 841 62 980 67"/><path d="M-10 377C160 327 171 213 346 270S592 316 739 233 841 140 980 142"/></svg>
       <nav aria-label="Session type">{Object.entries(labels).map(([key,label]) => <button key={key} aria-pressed={mode === key} className={mode === key ? 'selected' : ''} onClick={() => switchTo(key)}>{label}</button>)}</nav>
       <p className="session-label">{running ? (focus ? 'FINDING YOUR FLOW' : 'TIME TO RECHARGE') : 'READY WHEN YOU ARE'}</p>
       <div className="clock" role="timer" aria-label={`${Math.floor(remaining / 60)} minutes ${remaining % 60} seconds`}>{String(Math.floor(remaining / 60)).padStart(2,'0')}<span>:</span>{String(remaining % 60).padStart(2,'0')}</div>
       <div className="progress"><div style={{width:progress+'%'}}/></div>
-      <div className="controls"><button className="icon" aria-label="Reset session" onClick={() => {setRunning(false); setRemaining(durations[mode]*60);}}><Icon name="reset"/></button><button className="primary" onClick={toggle}>{running ? 'Pause session' : 'Start session'}<Icon name={running?'pause':'play'}/></button><button className="icon" aria-label="Skip to next session" onClick={advance}><Icon name="skip"/></button></div>
+      <div className="controls"><button className="icon" aria-label="Reset session" onClick={() => {finishSession('reset');setRunning(false); setRemaining(durations[mode]*60);}}><Icon name="reset"/></button><button className="primary" onClick={toggle}>{running ? 'Pause session' : 'Start session'}<Icon name={running?'pause':'play'}/></button><button className="icon" aria-label="Skip to next session" onClick={()=>advance(false)}><Icon name="skip"/></button></div>
       <div className="rounds"><div aria-hidden="true">{[0,1,2,3].map(i => <span key={i} className={i<rounds%4?'done':''}/>)}</div><p>{rounds} focus {rounds===1?'session':'sessions'} completed · long break every 4</p></div>
     </section>
+    {pendingGoal&&<div className="glass goal-check"><div><h2>How did it go?</h2><p>{pendingGoal.goal}</p></div><div>{[['done','Finished'],['progress','Made progress'],['not_done','Not this time']].map(([value,label])=><button className="small-primary" key={value} onClick={()=>{setSessions(old=>old.map(s=>s.id===pendingGoal.id?{...s,outcome:value}:s));setPendingGoal(null);}}>{label}</button>)}<button className="text-button" onClick={()=>setPendingGoal(null)}>Later</button></div></div>}
     <section className="settings">
       <div className="sound glass">
         <div className="setting-heading"><h2><Icon name="music"/>Your soundtrack</h2><button disabled={!focus} onClick={() => setMuted(!muted)}>{muted?'Unmute':'Mute'}</button></div>
@@ -117,9 +167,13 @@ function App() {
         </div>}
         {error&&<p className="error" role="alert">{error}</p>}
       </div>
-      <div className="lengths glass"><h2><Icon name="clock"/>Session lengths</h2><p>Set a pace that works for you.</p>{Object.entries(labels).map(([key,label])=><label className="duration" key={key}>{label}<span><input aria-label={`${label} minutes`} type="number" min="1" max="180" disabled={running} value={durations[key]} onChange={e=>{const value=Math.max(1,Math.min(180,Number(e.target.value)||1));setDurations({...durations,[key]:value});if(key===mode)setRemaining(value*60);}}/> min</span></label>)}<div className="quiet-note"><Icon name="leaf"/><div><h3>A little space to breathe.</h3><p>A soft tick keeps time during breaks. Stretch, step outside, or put on your own music.</p></div></div></div>
+      <div className="lengths glass"><h2><Icon name="clock"/>Session lengths</h2><p>Set a pace that works for you.</p>{Object.entries(labels).map(([key,label])=><label className="duration" key={key}>{label}<span><input aria-label={`${label} minutes`} type="number" min="1" max="180" disabled={running} value={durations[key]} onChange={e=>{const value=Math.max(1,Math.min(180,Number(e.target.value)||1));if(key===mode)finishSession('reset');setMood('custom');setDurations({...durations,[key]:value});if(key===mode)setRemaining(value*60);}}/> min</span></label>)}{!focus?<BreakGuide running={running} activity={breakActivity} setActivity={setBreakActivity}/>:<div className="quiet-note"><Icon name="leaf"/><div><h3>A little space to breathe.</h3><p>A soft tick keeps time during breaks. Stretch, step outside, or put on your own music.</p></div></div>}</div>
     </section>
+    </>}
+    {view==='studio'&&<Studio mix={{volume,binauralLevel,beat,trackId,layers}} setMix={setMix} presets={presets} setPresets={setPresets} applyMix={applyMix} activeMix={activeMix} reactive={reactive} setReactive={setReactive} showRewards={showRewards} setShowRewards={setShowRewards}/>}
+    {view==='progress'&&<Progress sessions={sessions} setSessions={setSessions} showRewards={showRewards} theme={theme} setTheme={setTheme} exportBackup={exportBackup} restoreBackup={restoreBackup}/>}
+    </div>
     <footer><span>One session at a time.</span><div className="footer-star" aria-hidden="true">✦</div><span>Keep listening at a comfortable volume.</span></footer>
   </main></div>;
 }
-createRoot(document.getElementById('root')).render(<App/>);
+loadData().then(initial=>createRoot(document.getElementById('root')).render(<App initial={initial}/>));
