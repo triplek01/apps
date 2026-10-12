@@ -1,6 +1,6 @@
 # Focus Beat
 
-A Windows Pomodoro app with 30 original generated focus tracks, adjustable stereo binaural tones, and gentle clock ticking during breaks. The interface uses a dark starry background, translucent purple panels, and lavender-to-peach controls.
+A Windows Pomodoro app with 30 original generated focus tracks, adjustable stereo binaural tones, and gentle clock ticking during breaks. The interface uses slowly drifting purple waves, subtle star twinkles, translucent panels, and lavender-to-peach controls. The Animation on/off button remembers your preference across launches; system reduced-motion preferences stop all ambient animation.
 
 ## Listening
 

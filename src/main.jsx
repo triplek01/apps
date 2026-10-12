@@ -18,9 +18,24 @@ const paths = {
 };
 function Icon({name, ...props}) { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path d={paths[name]}/></svg>; }
 function Atmosphere() {
-  return <div className="atmosphere" aria-hidden="true"><svg viewBox="0 0 1553 1013" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="wave" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#6960a3" stopOpacity=".2"/><stop offset=".55" stopColor="#26273f" stopOpacity=".1"/><stop offset="1" stopColor="#9e78da" stopOpacity=".16"/></linearGradient><filter id="glow"><feGaussianBlur stdDeviation="13"/></filter></defs><path className="wave-glow" d="M-50 205C215 105 216 370 455 354S645 481 861 451 1109 253 1553-32"/><path fill="url(#wave)" d="M-50 205C215 105 216 370 455 354S645 481 861 451 1109 253 1553-32V-50H-50Z"/><path className="wave-edge" d="M-50 205C215 105 216 370 455 354S645 481 861 451 1109 253 1553-32"/><path fill="url(#wave)" d="M-60 1020C119 660 278 797 466 733S793 898 974 591 1260 626 1610 162V1060Z"/><path className="wave-edge lower" d="M-60 1020C119 660 278 797 466 733S793 898 974 591 1260 626 1610 162"/>{Array.from({length:45},(_,i)=><circle key={i} cx={(i*347+73)%1553} cy={(i*191+69)%1013} r={i%5===0?1.5:.8} fill="#d5b5ff" opacity={i%3===0?.55:.2}/>)}</svg></div>;
+  return <div className="atmosphere" aria-hidden="true"><svg viewBox="0 0 1553 1013" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="wave" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#6960a3" stopOpacity=".2"/><stop offset=".55" stopColor="#26273f" stopOpacity=".1"/><stop offset="1" stopColor="#9e78da" stopOpacity=".16"/></linearGradient><filter id="glow"><feGaussianBlur stdDeviation="13"/></filter></defs><g className="wave-layer wave-upper"><path className="wave-glow" d="M-50 205C215 105 216 370 455 354S645 481 861 451 1109 253 1553-32"/><path fill="url(#wave)" d="M-50 205C215 105 216 370 455 354S645 481 861 451 1109 253 1553-32V-50H-50Z"/><path className="wave-edge" d="M-50 205C215 105 216 370 455 354S645 481 861 451 1109 253 1553-32"/></g><g className="wave-layer wave-lower"><path fill="url(#wave)" d="M-60 1020C119 660 278 797 466 733S793 898 974 591 1260 626 1610 162V1060Z"/><path className="wave-edge lower" d="M-60 1020C119 660 278 797 466 733S793 898 974 591 1260 626 1610 162"/></g>{Array.from({length:45},(_,i)=><circle className="star" style={{'--star-delay':`${i%9*-1.1}s`,'--star-opacity':i%3===0?.55:.2}} key={i} cx={(i*347+73)%1553} cy={(i*191+69)%1013} r={i%5===0?1.5:.8} fill="#d5b5ff" opacity={i%3===0?.55:.2}/>)}</svg></div>;
 }
 function App() {
+  const [animations, setAnimations] = useState(() => {
+    try { return localStorage.getItem('focus-beat-motion') !== 'off'; } catch { return true; }
+  });
+  const [reducedMotion, setReducedMotion] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
+  useEffect(() => {
+    const preference = matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReducedMotion(preference.matches);
+    preference.addEventListener('change', update);
+    return () => preference.removeEventListener('change', update);
+  }, []);
+  function toggleAnimation() {
+    const next = !animations; setAnimations(next);
+    try { localStorage.setItem('focus-beat-motion', next ? 'on' : 'off'); } catch {}
+  }
+  const motionEnabled = animations && !reducedMotion;
   const [durations, setDurations] = useState({ focus: 25, break: 5, long: 15 });
   const [mode, setMode] = useState('focus'); const [rounds, setRounds] = useState(0);
   const [remaining, setRemaining] = useState(1500); const [running, setRunning] = useState(false);
@@ -70,8 +85,8 @@ function App() {
   function toggle() { if (!running) deadline.current = Date.now() + remaining * 1000; setRunning(!running); }
   const progress = Math.max(0, Math.min(100, 100 * (1 - remaining / (durations[mode] * 60))));
   const rangeStyle = value => ({ '--fill': `${value * 100}%` });
-  return <><Atmosphere/><main>
-    <header><div className="brand"><span className="logo"/>FOCUS BEAT</div><span className="badge">YOUR TIME, IN TUNE</span></header>
+  return <div className={motionEnabled ? 'app motion-on' : 'app motion-off'}><Atmosphere/><main>
+    <header><div className="brand"><span className="logo"/>FOCUS BEAT</div><div className="header-tools"><span className="badge">YOUR TIME, IN TUNE</span><button className="motion-toggle" aria-pressed={motionEnabled} disabled={reducedMotion} title={reducedMotion ? 'Your system’s reduced-motion setting pauses animation' : 'Toggle ambient animation'} onClick={toggleAnimation}>Animation {motionEnabled ? 'on' : 'off'}</button></div></header>
     <section className="intro"><p className="eyebrow">A LITTLE RHYTHM. A LOT OF FOCUS.</p><h1>Find your flow.</h1><p>Make room for deep work. Take a break that’s yours.</p></section>
     <section className="timer glass">
       <svg className="panel-wave" viewBox="0 0 970 450" preserveAspectRatio="none" aria-hidden="true"><path d="M-10 350C160 300 146 145 346 230S592 281 739 165 841 62 980 67"/><path d="M-10 377C160 327 171 213 346 270S592 316 739 233 841 140 980 142"/></svg>
@@ -105,6 +120,6 @@ function App() {
       <div className="lengths glass"><h2><Icon name="clock"/>Session lengths</h2><p>Set a pace that works for you.</p>{Object.entries(labels).map(([key,label])=><label className="duration" key={key}>{label}<span><input aria-label={`${label} minutes`} type="number" min="1" max="180" disabled={running} value={durations[key]} onChange={e=>{const value=Math.max(1,Math.min(180,Number(e.target.value)||1));setDurations({...durations,[key]:value});if(key===mode)setRemaining(value*60);}}/> min</span></label>)}<div className="quiet-note"><Icon name="leaf"/><div><h3>A little space to breathe.</h3><p>A soft tick keeps time during breaks. Stretch, step outside, or put on your own music.</p></div></div></div>
     </section>
     <footer><span>One session at a time.</span><div className="footer-star" aria-hidden="true">✦</div><span>Keep listening at a comfortable volume.</span></footer>
-  </main></>;
+  </main></div>;
 }
 createRoot(document.getElementById('root')).render(<App/>);
