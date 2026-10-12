@@ -19,12 +19,14 @@ export function summarize(sessions) {
     favoriteMix:[...mixes.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0]||null,bestHour:hourOptions[0]||null};
 }
 export function milestones(stats) {
-  return [
-    {id:'first',title:'First chapter',description:'Complete your first focus session.',earned:stats.completed>=1},
-    {id:'four',title:'Finding a rhythm',description:'Complete four focus sessions.',earned:stats.completed>=4},
-    {id:'goal',title:'Made it happen',description:'Finish one session goal.',earned:stats.goalsDone>=1},
-    {id:'hours',title:'Room for focus',description:'Record two hours of timed focus.',earned:stats.seconds>=7200},
-  ];
+ const sessionBadges=[[1,'First chapter'],[4,'Finding a rhythm'],[10,'Double digits'],[25,'A growing practice'],[50,'Fifty little starts'],[100,'A hundred chapters'],[250,'Steady explorer'],[500,'A lasting rhythm']];
+ const goalBadges=[[1,'Made it happen'],[5,'Five meaningful finishes'],[10,'Ideas into action'],[25,'A shelf of finished things'],[50,'Making room for results'],[100,'A hundred things done']];
+ const hourBadges=[[1,'An hour for yourself'],[2,'Room for focus'],[5,'Five hours of space'],[10,'Deepening the practice'],[25,'Time well tended'],[50,'Fifty hours of focus']];
+ return [
+  ...sessionBadges.map(([target,title])=>({id:target===1?'first':target===4?'four':`sessions-${target}`,title,description:`Complete ${target} focus ${target===1?'session':'sessions'}.`,earned:stats.completed>=target,current:stats.completed,target})),
+  ...goalBadges.map(([target,title])=>({id:target===1?'goal':`goals-${target}`,title,description:`Finish ${target} session ${target===1?'goal':'goals'}.`,earned:stats.goalsDone>=target,current:stats.goalsDone,target})),
+  ...hourBadges.map(([hours,title])=>({id:hours===2?'hours':`hours-${hours}`,title,description:`Record ${hours} ${hours===1?'hour':'hours'} of timed focus.`,earned:stats.seconds>=hours*3600,current:Math.floor(stats.seconds/60),target:hours*60})),
+ ];
 }
 export const THEMES = [
   {id:'twilight',name:'Velvet twilight',sessions:0},

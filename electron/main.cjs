@@ -8,7 +8,7 @@ function registerStorage() {
     try { return JSON.parse(await fs.readFile(file, 'utf8')); } catch (error) { if (error.code === 'ENOENT') return null; throw new Error('Saved data could not be read'); }
   });
   ipcMain.handle('focus-beat:write', async (_event, data) => {
-    if (!data || data.schemaVersion !== 1) throw new Error('Invalid data');
+    if (!data || ![1,2].includes(data.schemaVersion)) throw new Error('Invalid data');
     const json = JSON.stringify(data);
     if (Buffer.byteLength(json) > 10 * 1024 * 1024) throw new Error('Data is too large; export a backup');
     writeQueue = writeQueue.catch(() => {}).then(async () => {

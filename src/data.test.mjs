@@ -9,3 +9,8 @@ test('unknown backups are rejected and malformed history does not crash startup'
  assert.throws(()=>cleanData({settings:{}}),/backup/);assert.throws(()=>cleanData(null),/backup/);
  assert.deepEqual(cleanData({schemaVersion:1,sessions:[null,{id:'bad',startedAt:3,endedAt:1}]}).sessions,[]);assert.equal(emptyData().settings.tickEnabled,true);
 });
+
+test('version-one backups migrate without dropping saved goals and mixes',()=>{
+ const legacy={schemaVersion:1,settings:{trackId:29,goalDraft:'Continue my project'},presets:[{id:'old',name:'My old mix',mix:{trackId:10}}],sessions:[{id:'old-session',startedAt:1000,endedAt:61000,seconds:60,plannedMinutes:1,status:'completed',goal:'My project',outcome:'done'}]};
+ const data=cleanData(legacy);assert.equal(data.schemaVersion,2);assert.equal(data.settings.goalDraft,'Continue my project');assert.equal(data.presets[0].mix.trackId,10);assert.equal(data.sessions[0].goal,'My project');assert.equal(data.sessions[0].activity,null);
+});
