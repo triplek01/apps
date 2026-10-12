@@ -1,0 +1,59 @@
+name: Publish Windows app
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to publish
+        required: true
+        default: v1.0.0
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Test timer
+        run: npm test
+      - name: Build portable Windows app
+        run: npm run dist:win:portable
+      - name: Retain downloadable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Focus-Beat-Windows
+          path: release/*-win.zip
+          if-no-files-found: error
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          $archive = Get-ChildItem 'release/*-win.zip' | Select-Object -First 1
+          if (-not $archive) { throw 'Windows ZIP is missing' }
+          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:RELEASE_TAG $archive.FullName --repo $env:GITHUB_REPOSITORY --clobber
+          } else {
+            gh release create $env:RELEASE_TAG $archive.FullName --repo $env:GITHUB_REPOSITORY --verify-tag --title "Focus Beat $env:RELEASE_TAG" --notes "Portable Windows Pomodoro app with binaural focus tones and an upbeat break loop. Download the ZIP, extract all files, and launch Focus Beat.exe. Stereo headphones are recommended. This initial build is unsigned and Windows audio behavior still needs user testing."
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub release publication failed' }
