@@ -9,14 +9,30 @@ const voices = {
   bass: { harmonics: [1,2], levels: [1,.15], attack: .025 },
 };
 export class SessionAudio {
-  async start(mode, musicVolume, beat, binauralLevel = .35, trackId = 0, onEnd = () => {}, offset = 0) {
+  async start(mode, musicVolume, beat, binauralLevel = .35, trackId = 0, onEnd = () => {}, offset = 0, breakVolume = .25) {
     this.stop();
-    // Breaks create no audio context, oscillators, or playback scheduler.
-    if (mode !== 'focus') return;
     const track = TRACKS[trackId];
     const ctx = new AudioContext(); this.ctx = ctx; this.offset = offset;
     await ctx.resume();
     if (this.ctx !== ctx) { if (ctx.state !== 'closed') await ctx.close(); return; }
+    if (mode !== 'focus') {
+      const clock = ctx.createGain(); clock.gain.value = breakVolume; clock.connect(ctx.destination); this.clock = clock;
+      let next = ctx.currentTime + .04; let count = 0;
+      const tick = time => {
+        const osc = ctx.createOscillator(); const envelope = ctx.createGain();
+        osc.frequency.value = count++ % 2 ? 780 : 920;
+        envelope.gain.setValueAtTime(.0001, time);
+        envelope.gain.exponentialRampToValueAtTime(.1, time + .002);
+        envelope.gain.exponentialRampToValueAtTime(.0001, time + .035);
+        osc.connect(envelope); envelope.connect(clock); osc.start(time); osc.stop(time + .04);
+        osc.onended = () => { osc.disconnect(); envelope.disconnect(); };
+      };
+      const schedule = () => {
+        if (next < ctx.currentTime) next += Math.ceil(ctx.currentTime - next);
+        while (next < ctx.currentTime + .15) { tick(next); next += 1; }
+      };
+      schedule(); this.interval = setInterval(schedule, 100); return;
+    }
     const limiter = ctx.createDynamicsCompressor(); limiter.threshold.value = -14; limiter.knee.value = 18; limiter.ratio.value = 4; limiter.connect(ctx.destination);
     const music = ctx.createGain(); music.gain.value = musicVolume * .8; music.connect(limiter); this.music = music;
     const reverb = ctx.createConvolver();
@@ -77,10 +93,11 @@ export class SessionAudio {
   }
   getPosition() { return this.ctx ? this.offset + this.ctx.currentTime : 0; }
   setVolume(volume) { if (this.music) this.music.gain.setTargetAtTime(volume * .8, this.ctx.currentTime, .05); }
+  setBreakVolume(volume) { if (this.clock) this.clock.gain.setTargetAtTime(volume, this.ctx.currentTime, .05); }
   setBinauralLevel(level) { this.binaural?.forEach(gain => gain.gain.setTargetAtTime(level * .055, this.ctx.currentTime, .1)); }
   stop() {
     clearInterval(this.interval); this.interval = null;
-    const ctx = this.ctx; this.ctx = null; this.music = null; this.binaural = null;
+    const ctx = this.ctx; this.ctx = null; this.music = null; this.binaural = null; this.clock = null;
     if (ctx && ctx.state !== 'closed') ctx.close().catch(() => {});
   }
 }

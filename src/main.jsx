@@ -26,6 +26,7 @@ function App() {
   const [remaining, setRemaining] = useState(1500); const [running, setRunning] = useState(false);
   const [volume, setVolume] = useState(.4); const [binauralLevel, setBinauralLevel] = useState(.35);
   const [beat, setBeat] = useState(10); const [muted, setMuted] = useState(false);
+  const [tickEnabled, setTickEnabled] = useState(true); const [breakVolume, setBreakVolume] = useState(.25);
   const [trackId, setTrackId] = useState(0); const [shuffle, setShuffle] = useState(true);
   const [error, setError] = useState('');
   const deadline = useRef(0); const audio = useRef(new SessionAudio()); const queue = useRef([]);
@@ -53,18 +54,19 @@ function App() {
   }, [running, mode, rounds, durations]);
   useEffect(() => {
     setError('');
-    if (running && focus && !muted) {
-      const offset = position.current.id === trackId ? Math.min(position.current.seconds, track.duration - .1) : 0;
-      audio.current.start(mode, volume, beat, binauralLevel, trackId, () => onTrackEnd.current(), offset)
+    if (running && (focus ? !muted : tickEnabled)) {
+      const offset = focus && position.current.id === trackId ? Math.min(position.current.seconds, track.duration - .1) : 0;
+      audio.current.start(mode, volume, beat, binauralLevel, trackId, () => onTrackEnd.current(), offset, breakVolume)
         .catch(() => setError('Audio could not start. Pause and try again.'));
     } else audio.current.stop();
     return () => {
-      if (audio.current.ctx) position.current = { id: trackId, seconds: audio.current.getPosition() };
+      if (focus && audio.current.ctx) position.current = { id: trackId, seconds: audio.current.getPosition() };
       audio.current.stop();
     };
-  }, [running, mode, muted, beat, trackId]);
+  }, [running, mode, muted, beat, trackId, tickEnabled]);
   useEffect(() => { audio.current.setVolume(volume); }, [volume]);
   useEffect(() => { audio.current.setBinauralLevel(binauralLevel); }, [binauralLevel]);
+  useEffect(() => { audio.current.setBreakVolume(breakVolume); }, [breakVolume]);
   function toggle() { if (!running) deadline.current = Date.now() + remaining * 1000; setRunning(!running); }
   const progress = Math.max(0, Math.min(100, 100 * (1 - remaining / (durations[mode] * 60))));
   const rangeStyle = value => ({ '--fill': `${value * 100}%` });
@@ -83,8 +85,8 @@ function App() {
     <section className="settings">
       <div className="sound glass">
         <div className="setting-heading"><h2><Icon name="music"/>Your soundtrack</h2><button disabled={!focus} onClick={() => setMuted(!muted)}>{muted?'Unmute':'Mute'}</button></div>
-        <p className="sound-description">{focus ? '30 focus tracks · binaural tones · stereo headphones' : 'Silent break · time for whatever you need'}</p>
-        <div className={'playlist '+(!focus?'inactive':'')}>
+        <p className="sound-description">{focus ? '30 focus tracks · binaural tones · stereo headphones' : (tickEnabled ? 'A soft clock tick · time for whatever you need' : 'Silent break · time for whatever you need')}</p>
+        {focus ? <><div className={'playlist '+(!focus?'inactive':'')}>
           <label className="sr-only" htmlFor="track">Focus track</label>
           <select id="track" value={trackId} disabled={!focus} onChange={e=>selectTrack(Number(e.target.value))}>{TRACKS.map(t=><option key={t.id} value={t.id}>{String(t.id+1).padStart(2,'0')} · {t.title}</option>)}</select>
           <div className="track-meta"><span>{track.family} · {track.bpm} BPM</span><div><button className={shuffle?'active':''} aria-label="Shuffle playlist" aria-pressed={shuffle} disabled={!focus} onClick={()=>{queue.current=[];setShuffle(!shuffle);}}><Icon name="shuffle"/></button><button aria-label="Next focus track" disabled={!focus} onClick={nextTrack}><Icon name="skip"/></button></div></div>
@@ -92,9 +94,15 @@ function App() {
         <label className="slider-label">Music volume<span>{Math.round(volume*100)}%</span><input aria-label="Music volume" type="range" min="0" max="1" step=".01" style={rangeStyle(volume)} value={volume} onChange={e=>setVolume(Number(e.target.value))}/></label>
         <label className="slider-label">Binaural volume<span>{Math.round(binauralLevel*100)}%</span><input aria-label="Binaural volume" type="range" min="0" max="1" step=".01" style={rangeStyle(binauralLevel)} value={binauralLevel} onChange={e=>setBinauralLevel(Number(e.target.value))}/></label>
         <label className="frequency">Focus beat frequency<select aria-label="Focus beat frequency" value={beat} onChange={e=>setBeat(Number(e.target.value))}>{[4,6,10,14].map(v=><option key={v} value={v}>{v} Hz</option>)}</select></label>
+        </> : <div className="break-audio">
+          <label className="tick-toggle">Soft clock ticking<input aria-label="Soft clock ticking" type="checkbox" checked={tickEnabled} onChange={e=>setTickEnabled(e.target.checked)}/></label>
+          <p>One gentle tick each second. No music or binaural tones.</p>
+          <label className="slider-label">Tick volume<span>{Math.round(breakVolume*100)}%</span><input aria-label="Tick volume" type="range" min="0" max="1" step=".01" disabled={!tickEnabled} style={rangeStyle(breakVolume)} value={breakVolume} onChange={e=>setBreakVolume(Number(e.target.value))}/></label>
+          <p className="break-hint">Switch ticking off whenever you’d prefer complete silence.</p>
+        </div>}
         {error&&<p className="error" role="alert">{error}</p>}
       </div>
-      <div className="lengths glass"><h2><Icon name="clock"/>Session lengths</h2><p>Set a pace that works for you.</p>{Object.entries(labels).map(([key,label])=><label className="duration" key={key}>{label}<span><input aria-label={`${label} minutes`} type="number" min="1" max="180" disabled={running} value={durations[key]} onChange={e=>{const value=Math.max(1,Math.min(180,Number(e.target.value)||1));setDurations({...durations,[key]:value});if(key===mode)setRemaining(value*60);}}/> min</span></label>)}<div className="quiet-note"><Icon name="leaf"/><div><h3>A little space to breathe.</h3><p>Breaks are always silent. Stretch, step outside, or put on your own music.</p></div></div></div>
+      <div className="lengths glass"><h2><Icon name="clock"/>Session lengths</h2><p>Set a pace that works for you.</p>{Object.entries(labels).map(([key,label])=><label className="duration" key={key}>{label}<span><input aria-label={`${label} minutes`} type="number" min="1" max="180" disabled={running} value={durations[key]} onChange={e=>{const value=Math.max(1,Math.min(180,Number(e.target.value)||1));setDurations({...durations,[key]:value});if(key===mode)setRemaining(value*60);}}/> min</span></label>)}<div className="quiet-note"><Icon name="leaf"/><div><h3>A little space to breathe.</h3><p>A soft tick keeps time during breaks. Stretch, step outside, or put on your own music.</p></div></div></div>
     </section>
     <footer><span>One session at a time.</span><div className="footer-star" aria-hidden="true">✦</div><span>Keep listening at a comfortable volume.</span></footer>
   </main></>;

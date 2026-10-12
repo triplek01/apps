@@ -1,13 +1,13 @@
 # Focus Beat
 
-A Windows Pomodoro app with 30 original generated focus tracks, adjustable stereo binaural tones, and silent breaks. The interface uses a dark starry background, translucent purple panels, and lavender-to-peach controls.
+A Windows Pomodoro app with 30 original generated focus tracks, adjustable stereo binaural tones, and gentle clock ticking during breaks. The interface uses a dark starry background, translucent purple panels, and lavender-to-peach controls.
 
 ## Listening
 
 - Select a focus track or enable shuffle. Tracks rotate automatically while focusing, and a new track is selected for the next focus session.
 - The 30 scores span soft piano, warm ambient, mellow lo-fi, glass and bells, soft strings, and gentle electronic styles. Each has its own melody, key, tempo, and arrangement, lasting roughly 3–5 minutes.
 - Music and binaural volumes are independent. Use stereo headphones for binaural tones. Set binaural volume to zero for music alone.
-- Both short and long breaks are completely silent, including binaural tones. There is no break chime.
+- Short and long breaks play a soft clock tick once per second, with their own volume control and an off switch for complete silence. Breaks never play music or binaural tones.
 - Pause and mute preserve the current track's playback position. Next-track and manual selection start the selected track from the beginning.
 - All music is synthesized locally; no streaming services or downloaded recordings are used. Keep listening at a comfortable volume. Binaural tones are a sound preference, not a promised cognitive benefit.
 
