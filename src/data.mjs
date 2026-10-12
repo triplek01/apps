@@ -32,7 +32,8 @@ export function cleanData(raw) {
     trackTitle: text(s.trackTitle,80), mixName: text(s.mixName,60), mood: text(s.mood,60),
   })) : [];
   const profiles=Object.fromEntries(['study','work','chores','creative'].filter(id=>raw.profiles?.[id]&&typeof raw.profiles[id]==='object').map(id=>[id,cleanData({schemaVersion:1,settings:raw.profiles[id]}).settings]));
-  return { schemaVersion: 2, settings, presets, sessions, profiles };
+  const tasks=Array.isArray(raw.tasks)?raw.tasks.filter(t=>t&&typeof t.id==='string'&&text(t.title).trim()&&['study','work','chores','creative'].includes(t.activity)).map(t=>({id:text(t.id,80),title:text(t.title).trim(),done:bool(t.done,false),activity:t.activity})):settings.goalDraft.trim()?[{id:'legacy-goal',title:settings.goalDraft.trim(),done:false,activity:settings.activity}]:[];
+  return { schemaVersion: 2, settings, presets, sessions, profiles, tasks };
 }
 export const emptyData = () => cleanData({schemaVersion:1});
 export async function loadData() {

@@ -1,9 +1,3 @@
-export const MOODS = [
-  {id:'ease',label:'Ease in',description:'A small, gentle start.',durations:{focus:15,break:5,long:15},mix:{volume:.32,binauralLevel:.2,beat:10,trackId:5,layers:{rain:.12}}},
-  {id:'steady',label:'Steady focus',description:'Your familiar Pomodoro rhythm.',durations:{focus:25,break:5,long:15},mix:{volume:.4,binauralLevel:.35,beat:10,trackId:0,layers:{}}},
-  {id:'deep',label:'Deep work',description:'More time for one meaningful task.',durations:{focus:45,break:10,long:20},mix:{volume:.35,binauralLevel:.25,beat:10,trackId:20,layers:{brown:.06}}},
-  {id:'sprint',label:'Short sprint',description:'A little momentum when you need it.',durations:{focus:10,break:3,long:10},mix:{volume:.4,binauralLevel:.2,beat:14,trackId:25,layers:{vinyl:.05}}},
-];
 export function summarize(sessions) {
   const completed = sessions.filter(s=>s.status==='completed');
   const rated = completed.filter(s=>s.goal && s.outcome);

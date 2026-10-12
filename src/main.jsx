@@ -7,10 +7,11 @@ import { nextSession, remainingSeconds } from './timer.mjs';
 import '@fontsource-variable/inter';
 import './style.css';
 import Studio from './Studio';
+import Tasks from './Tasks';
 import Progress from './Progress';
 import BreakGuide from './BreakGuide';
 import {cleanData,cleanMix,loadData,saveData,DEFAULT_SETTINGS} from './data.mjs';
-import {MOODS,summarize} from './insights.mjs';
+import {summarize} from './insights.mjs';
 import {ACTIVITIES,activityTracks} from './profiles.mjs';
 const labels = { focus: 'Focus', break: 'Short break', long: 'Long break' };
 const paths = {
@@ -51,7 +52,7 @@ function App({initial}) {
   const [selectedActivity,setSelectedActivity]=useState(null);const [profiles,setProfiles]=useState(initial.data.profiles);const [autoBreaks,setAutoBreaks]=useState(seed.autoBreaks);
   const [view,setView]=useState('focus'); const [breakActivity,setBreakActivity]=useState(seed.breakActivity);
   const [layers,setLayers]=useState(seed.layers);const [presets,setPresets]=useState(initial.data.presets);
-  const [sessions,setSessions]=useState(initial.data.sessions);const [goal,setGoal]=useState(seed.goalDraft);
+  const [tasks,setTasks]=useState(initial.data.tasks);const [sessions,setSessions]=useState(initial.data.sessions);const [goal,setGoal]=useState(seed.goalDraft);
   const [activeMix,setActiveMix]=useState(seed.activeMix);const [mood,setMood]=useState(seed.mood);
   const [reactive,setReactive]=useState(seed.reactive);const [theme,setTheme]=useState(seed.theme);const [showRewards,setShowRewards]=useState(seed.showRewards);
   const [pendingGoal,setPendingGoal]=useState(null);const [pendingImport,setPendingImport]=useState(null);
@@ -68,11 +69,11 @@ function App({initial}) {
   onTrackEnd.current = nextTrack;
   function selectTrack(id) { queue.current = []; setTrackId(id); }
   const settings={activity:selectedActivity||seed.activity,autoBreaks,animationMode,animations,breakActivity,durations,volume,binauralLevel,beat,trackId,shuffle,tickEnabled,breakVolume,layers,reactive,theme,showRewards,goalDraft:goal,activeMix,mood};
-  const data={schemaVersion:2,settings,presets,sessions,profiles:selectedActivity?{...profiles,[selectedActivity]:settings}:profiles};
+  const data={schemaVersion:2,settings,presets,sessions,tasks,profiles:selectedActivity?{...profiles,[selectedActivity]:settings}:profiles};
   useEffect(()=>{
     if(storageBlocked)return;
     saveData(data).then(()=>setStorageError('')).catch(()=>setStorageError('Your latest changes could not be saved. Export a backup from Progress to keep them.'));
-  },[selectedActivity,profiles,autoBreaks,animationMode,animations,breakActivity,durations,volume,binauralLevel,beat,trackId,shuffle,tickEnabled,breakVolume,layers,reactive,theme,showRewards,goal,activeMix,mood,presets,sessions,storageBlocked]);
+  },[selectedActivity,profiles,autoBreaks,animationMode,animations,breakActivity,durations,volume,binauralLevel,beat,trackId,shuffle,tickEnabled,breakVolume,layers,reactive,theme,showRewards,goal,activeMix,mood,presets,sessions,tasks,storageBlocked]);
   function setMix(next) {
     const mix=cleanMix(next);setVolume(mix.volume);setBinauralLevel(mix.binauralLevel);setBeat(mix.beat);setTrackId(mix.trackId);setLayers(mix.layers);setActiveMix('Custom mix');
     if(mix.trackId!==trackId)queue.current=[];
@@ -84,10 +85,10 @@ function App({initial}) {
     if(seconds>0){const session={id:crypto.randomUUID(),startedAt:sessionStart.current,endedAt:Date.now(),seconds,plannedMinutes:durations.focus,status,activity:selectedActivity,goal:goal.trim(),outcome:null,trackTitle:volume>0?track.title:'Atmosphere only',mixName:activeMix,mood};setSessions(old=>[...old,session]);if(status==='completed'&&session.goal){setPendingGoal(session);setGoal('');}}
     sessionStart.current=null;
   }
-  function applyMood(id){const preset=MOODS.find(m=>m.id===id);if(!preset)return;finishSession('reset');setDurations(preset.durations);setRemaining(preset.durations[mode]*60);applyMix(preset.mix,preset.label);setMood(id);}
+
   function exportBackup(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='focus-beat-backup.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   async function restoreBackup(file){try{setPendingImport(cleanData(JSON.parse(await file.text())));}catch{setStorageError('That file is not a valid Focus Beat backup. Your current data has not changed.');}}
-  function confirmRestore(){const restored=pendingImport;const s=restored.settings;setAnimationMode(s.animationMode);setAutoBreaks(s.autoBreaks);setProfiles(restored.profiles);setSelectedActivity(s.activity);setBreakActivity(s.breakActivity);setRunning(false);sessionStart.current=null;position.current={id:s.trackId,seconds:0};setDurations(s.durations);setRemaining(s.durations.focus*60);setMode('focus');setMix(s);setShuffle(s.shuffle);setTickEnabled(s.tickEnabled);setBreakVolume(s.breakVolume);setReactive(s.reactive);setTheme(s.theme);setShowRewards(s.showRewards);setGoal(s.goalDraft);setActiveMix(s.activeMix);setMood(s.mood);setPresets(restored.presets);setSessions(restored.sessions);setRounds(summarize(restored.sessions).completed);setPendingImport(null);setPendingGoal(null);setStorageBlocked(false);}
+  function confirmRestore(){const restored=pendingImport;const s=restored.settings;setAnimationMode(s.animationMode);setAutoBreaks(s.autoBreaks);setProfiles(restored.profiles);setSelectedActivity(s.activity);setBreakActivity(s.breakActivity);setRunning(false);sessionStart.current=null;position.current={id:s.trackId,seconds:0};setDurations(s.durations);setRemaining(s.durations.focus*60);setMode('focus');setMix(s);setShuffle(s.shuffle);setTickEnabled(s.tickEnabled);setBreakVolume(s.breakVolume);setReactive(s.reactive);setTheme(s.theme);setShowRewards(s.showRewards);setGoal(s.goalDraft);setActiveMix(s.activeMix);setMood(s.mood);setTasks(restored.tasks);setPresets(restored.presets);setSessions(restored.sessions);setRounds(summarize(restored.sessions).completed);setPendingImport(null);setPendingGoal(null);setStorageBlocked(false);}
   function switchTo(next, automatic=false) {
     if(!automatic)finishSession('switched');
     if (next === 'focus' && !focus) nextTrack();
@@ -146,14 +147,14 @@ function App({initial}) {
   return <div ref={appElement} className={`app theme-${theme} ${focus?'scene-focus':'scene-break'} ${motionEnabled?'motion-on':'motion-off'} ${animationMode==='on'?'motion-explicit':''}`}><Atmosphere/><main>
     <header><div className="brand"><span className="logo"/>FOCUS BEAT</div><div className="header-tools"><span className="badge">YOUR TIME, IN TUNE</span>{motionButton}</div></header>
     <div className="activity-bar"><span>{activity.icon} {activity.label}</span><div><button className="text-button" disabled={running} onClick={()=>{finishSession('reset');chooseActivity(selectedActivity,true);}}>Reset profile</button><button className="text-button" title="End the current timer and choose another activity" onClick={changeActivity}>Change activity</button></div></div>
-    <div className="app-nav" role="tablist" aria-label="App sections">{[['focus','Focus'],['studio','Sound Studio'],['progress','Progress']].map(([id,label])=><button role="tab" id={`view-${id}`} aria-selected={view===id} tabIndex={view===id?0:-1} key={id} onKeyDown={e=>{const list=['focus','studio','progress'];let index=list.indexOf(id);if(e.key==='ArrowRight')index=(index+1)%3;else if(e.key==='ArrowLeft')index=(index+2)%3;else if(e.key==='Home')index=0;else if(e.key==='End')index=2;else return;e.preventDefault();setView(list[index]);document.getElementById(`view-${list[index]}`).focus();}} onClick={()=>setView(id)}>{label}</button>)}</div>
+    <div className="app-nav" role="tablist" aria-label="App sections">{[['focus','Focus'],['studio','Sound Studio'],['tasks','Tasks'],['progress','Progress']].map(([id,label])=><button role="tab" id={`view-${id}`} aria-selected={view===id} tabIndex={view===id?0:-1} key={id} onKeyDown={e=>{const list=['focus','studio','tasks','progress'];let index=list.indexOf(id);if(e.key==='ArrowRight')index=(index+1)%list.length;else if(e.key==='ArrowLeft')index=(index+list.length-1)%list.length;else if(e.key==='Home')index=0;else if(e.key==='End')index=list.length-1;else return;e.preventDefault();setView(list[index]);document.getElementById(`view-${list[index]}`).focus();}} onClick={()=>setView(id)}>{label}</button>)}</div>
     {view!=='focus'&&<div className="mini-session"><span>{labels[mode]} · {String(Math.floor(remaining/60)).padStart(2,'0')}:{String(remaining%60).padStart(2,'0')}</span><button className="small-primary" onClick={toggle}>{running?'Pause session':'Start session'}</button><button className="text-button" onClick={()=>setView('focus')}>Back to timer</button></div>}
     {storageError&&<p className="storage-banner" role="alert">{storageError}</p>}
-    {pendingImport&&<div className="glass restore-confirm" role="alert"><p>Restore {pendingImport.sessions.length} sessions and {pendingImport.presets.length} saved mixes? This replaces your current data. Export a backup first if you want to keep it.</p><button className="small-primary" onClick={confirmRestore}>Replace my data</button><button className="text-button" onClick={()=>setPendingImport(null)}>Cancel</button></div>}
+    {pendingImport&&<div className="glass restore-confirm" role="alert"><p>Restore {pendingImport.sessions.length} sessions, {pendingImport.presets.length} saved mixes, and {pendingImport.tasks.length} tasks? This replaces your current data. Export a backup first if you want to keep it.</p><button className="small-primary" onClick={confirmRestore}>Replace my data</button><button className="text-button" onClick={()=>setPendingImport(null)}>Cancel</button></div>}
     <div role="tabpanel" aria-labelledby={`view-${view}`}>
-    <section className="intro"><p className="eyebrow">A LITTLE RHYTHM. A LOT OF FOCUS.</p><h1>{view==='focus'?'Find your flow.':view==='studio'?'Make it your own.':'A little progress, every day.'}</h1><p>{view==='focus'?'Make room for deep work. Take a break that’s yours.':view==='studio'?'Your music. Your atmosphere. Your space.':'Notice your rhythm, without judging your pace.'}</p></section>
+    <section className="intro"><p className="eyebrow">A LITTLE RHYTHM. A LOT OF FOCUS.</p><h1>{view==='focus'?'Find your flow.':view==='studio'?'Make it your own.':view==='tasks'?'One thing at a time.':'A little progress, every day.'}</h1><p>{view==='focus'?'Make room for deep work. Take a break that’s yours.':view==='studio'?'Your music. Your atmosphere. Your space.':view==='tasks'?'Make a little room for what matters.':'Notice your rhythm, without judging your pace.'}</p></section>
     {view==='focus'&&<>
-    <div className="session-prep glass"><label htmlFor="session-goal">What are you working on?<input id="session-goal" placeholder="One small thing is enough (optional)" maxLength="200" value={goal} disabled={running} onChange={e=>setGoal(e.target.value)}/></label><label htmlFor="mood">Pace adjustment<select id="mood" value={mood} disabled={running} onChange={e=>applyMood(e.target.value)}><option value="custom">Profile settings</option>{MOODS.map(m=><option value={m.id} key={m.id}>{m.label}</option>)}</select></label></div>
+
     <section className="timer glass">
       {reactive&&<div className="audio-orb" aria-hidden="true"/>}
       <svg className="panel-wave" viewBox="0 0 970 450" preserveAspectRatio="none" aria-hidden="true"><path d="M-10 350C160 300 146 145 346 230S592 281 739 165 841 62 980 67"/><path d="M-10 377C160 327 171 213 346 270S592 316 739 233 841 140 980 142"/></svg>
@@ -189,6 +190,7 @@ function App({initial}) {
     </section>
     </>}
     {view==='studio'&&<Studio activity={selectedActivity} mix={{volume,binauralLevel,beat,trackId,layers}} setMix={setMix} presets={presets} setPresets={setPresets} applyMix={applyMix} activeMix={activeMix} reactive={reactive} setReactive={setReactive} showRewards={showRewards} setShowRewards={setShowRewards} animationMode={animationMode} setAnimationMode={setAnimationMode} reducedMotion={reducedMotion}/>}
+    {view==='tasks'&&<Tasks tasks={tasks} setTasks={setTasks} activity={activity} goal={goal} setGoal={setGoal} running={running}/>}
     {view==='progress'&&<Progress sessions={sessions} setSessions={setSessions} showRewards={showRewards} theme={theme} setTheme={setTheme} exportBackup={exportBackup} restoreBackup={restoreBackup} activity={activity}/>}
     </div>
     <footer><span>One session at a time.</span><div className="footer-star" aria-hidden="true">✦</div><span>Keep listening at a comfortable volume.</span></footer>

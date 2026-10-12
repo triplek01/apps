@@ -14,3 +14,9 @@ test('version-one backups migrate without dropping saved goals and mixes',()=>{
  const legacy={schemaVersion:1,settings:{trackId:29,goalDraft:'Continue my project'},presets:[{id:'old',name:'My old mix',mix:{trackId:10}}],sessions:[{id:'old-session',startedAt:1000,endedAt:61000,seconds:60,plannedMinutes:1,status:'completed',goal:'My project',outcome:'done'}]};
  const data=cleanData(legacy);assert.equal(data.schemaVersion,2);assert.equal(data.settings.goalDraft,'Continue my project');assert.equal(data.presets[0].mix.trackId,10);assert.equal(data.sessions[0].goal,'My project');assert.equal(data.sessions[0].activity,null);
 });
+
+test('activity checklists survive backups and legacy goals migrate only once',()=>{
+ const raw={schemaVersion:2,settings:{activity:'study',goalDraft:'Old goal'},tasks:[{id:'a',title:'  Read chapter  ',done:true,activity:'study'},{id:'b',title:'Clean desk',done:false,activity:'chores'},null,{id:'bad',title:'',activity:'work'},{id:'other',title:'Bad profile',activity:'unknown'}]};
+ const data=cleanData(raw);assert.equal(data.tasks.length,2);assert.equal(data.tasks[0].title,'Read chapter');assert.equal(data.tasks[0].done,true);assert.equal(data.tasks[1].activity,'chores');assert.deepEqual(cleanData(JSON.parse(JSON.stringify(data))),data);
+ const migrated=cleanData({schemaVersion:1,settings:{activity:'study',goalDraft:'Read a page'}});assert.deepEqual(migrated.tasks,[{id:'legacy-goal',title:'Read a page',done:false,activity:'study'}]);migrated.tasks=[];assert.deepEqual(cleanData(migrated).tasks,[]);
+});
