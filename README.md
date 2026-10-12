@@ -1,6 +1,15 @@
 # Focus Beat
 
-A Windows desktop Pomodoro timer with original melodic ambient focus music with a quiet stereo binaural layer, plus upbeat instrumental break music with keys, bass, and drums. Use stereo headphones for binaural audio and a comfortable listening volume. The tones are a sound preference, not a promised cognitive benefit.
+A Windows Pomodoro app with 30 original generated focus tracks, adjustable stereo binaural tones, and silent breaks. The interface uses a dark starry background, translucent purple panels, and lavender-to-peach controls.
+
+## Listening
+
+- Select a focus track or enable shuffle. Tracks rotate automatically while focusing, and a new track is selected for the next focus session.
+- The 30 scores span soft piano, warm ambient, mellow lo-fi, glass and bells, soft strings, and gentle electronic styles. Each has its own melody, key, tempo, and arrangement, lasting roughly 3–5 minutes.
+- Music and binaural volumes are independent. Use stereo headphones for binaural tones. Set binaural volume to zero for music alone.
+- Both short and long breaks are completely silent, including binaural tones. There is no break chime.
+- Pause and mute preserve the current track's playback position. Next-track and manual selection start the selected track from the beginning.
+- All music is synthesized locally; no streaming services or downloaded recordings are used. Keep listening at a comfortable volume. Binaural tones are a sound preference, not a promised cognitive benefit.
 
 ## Develop
 
@@ -11,23 +20,22 @@ npm ci
 npm run dev
 ```
 
-The Vite server supports browser development. For the desktop application:
+For the desktop app:
 
 ```sh
 npm run build
 npm run desktop
 ```
 
-## Windows installer
-
-Run on Windows:
+## Windows downloads
 
 ```sh
-npm ci
-npm run dist:win
+npm run dist:win:portable
 ```
 
-The NSIS installer is written to `release/`. This initial build is unsigned; public distribution will need a Windows signing certificate.
+Extract the ZIP from `release/`, then launch `Focus Beat.exe`. Keep all extracted files together. For an installer, run `npm run dist:win` on Windows (or Linux with Wine). Builds are unsigned.
+
+GitHub Actions publishes a Windows ZIP when a version tag is pushed. Do not push a release tag before the design has been reviewed.
 
 ## Validate
 
@@ -36,8 +44,6 @@ npm test
 npm run build
 ```
 
-Default sessions are 25 minutes of focus, 5 minutes of rest, and a 15-minute break after four focus sessions. Sessions advance automatically while running. Pause stops audio; reset restarts the current session. The app must stay open for the timer to run. Settings and completed-session counts currently reset when the app closes.
+Tests cover timer transitions, musical score validity and uniqueness, silent break arrangements, ordered playback, and shuffle without repeats. Default sessions are 25 minutes of focus, 5-minute breaks, and a 15-minute break after four focus sessions. The app must remain open for the timer to run. Settings, playlist order, and completed-session counts currently reset when the app closes.
 
-For a portable Windows ZIP, run `npm run dist:win:portable`, extract the archive from `release/`, and launch `Focus Beat.exe`. The NSIS installer requires Windows or Wine when cross-compiling on Linux.
-
-Version 1.1 adds a binaural tone level slider: keep it subtle under the melody, turn it up, or set it to zero for music alone. Focus music runs at 68 BPM, break music at 112 BPM. All music is generated locally; there are no streamed tracks or downloaded recordings.
+The bundled Inter typeface is distributed under the SIL Open Font License; see `public/Inter-LICENSE.txt`.

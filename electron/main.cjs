@@ -1,7 +1,7 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('node:path');
 function createWindow() {
-  const window = new BrowserWindow({ width: 1000, height: 800, minWidth: 650, minHeight: 700, backgroundColor: '#101820', webPreferences: { nodeIntegration: false, contextIsolation: true, backgroundThrottling: false } });
+  const window = new BrowserWindow({ width: 1120, height: 1040, minWidth: 650, minHeight: 700, backgroundColor: '#0c1019', webPreferences: { nodeIntegration: false, contextIsolation: true, backgroundThrottling: false } });
   window.setMenuBarVisibility(false);
   window.loadFile(path.join(__dirname, '../dist/index.html'));
 }
