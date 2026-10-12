@@ -80,7 +80,7 @@ function App({initial}) {
   function applyMix(mix,name){setMix(mix);setActiveMix(name);}
   function finishSession(status) {
     if(mode!=='focus'||!sessionStart.current)return;
-    const seconds=Math.max(0,Math.min(durations.focus*60,durations.focus*60-(running?remainingSeconds(deadline.current,Date.now()):remaining)));
+    const seconds=status==='completed'?durations.focus*60:Math.max(0,Math.min(durations.focus*60,durations.focus*60-(running?remainingSeconds(deadline.current,Date.now()):remaining)));
     if(seconds>0){const session={id:crypto.randomUUID(),startedAt:sessionStart.current,endedAt:Date.now(),seconds,plannedMinutes:durations.focus,status,activity:selectedActivity,goal:goal.trim(),outcome:null,trackTitle:volume>0?track.title:'Atmosphere only',mixName:activeMix,mood};setSessions(old=>[...old,session]);if(status==='completed'&&session.goal){setPendingGoal(session);setGoal('');}}
     sessionStart.current=null;
   }
@@ -95,11 +95,13 @@ function App({initial}) {
     if (running) { deadline.current = Date.now() + durations[next] * 60000; if(next==='focus')sessionStart.current=Date.now(); }
   }
   function advance(completed=false) { if(completed&&mode==='focus'&&!autoBreaks){finishSession('completed');setRounds(r=>r+1);setRunning(false);setRemaining(durations.focus*60);nextTrack();return;} finishSession(completed?'completed':'skipped'); const next=completed||mode!=='focus'?nextSession(mode,rounds):{mode:'break',rounds};setRounds(next.rounds);switchTo(next.mode,true); }
+  const advanceRef=useRef(advance);
+  advanceRef.current=advance;
   useEffect(() => {
     if (!running) return;
     const id = setInterval(() => {
       const seconds = remainingSeconds(deadline.current, Date.now()); setRemaining(seconds);
-      if (!seconds) advance(true);
+      if (!seconds) advanceRef.current(true);
     }, 200);
     return () => clearInterval(id);
   }, [running, mode, rounds, durations, autoBreaks]);
@@ -125,7 +127,7 @@ function App({initial}) {
     if(!running||!motionEnabled||!reactive||view!=='focus')return;
     const id=setInterval(()=>element.style.setProperty('--energy',String(audio.current.getEnergy())),100);return()=>clearInterval(id);
   },[running,motionEnabled,reactive,mode,view]);
-  function toggle() { if (!running && mode==='focus' && !sessionStart.current) sessionStart.current=Date.now(); if (!running) deadline.current = Date.now() + remaining * 1000; setRunning(!running); }
+  function toggle() { if(running)setRemaining(remainingSeconds(deadline.current,Date.now())); if (!running && mode==='focus' && !sessionStart.current) sessionStart.current=Date.now(); if (!running) deadline.current = Date.now() + remaining * 1000; setRunning(!running); }
   const progress = Math.max(0, Math.min(100, 100 * (1 - remaining / (durations[mode] * 60))));
   const rangeStyle = value => ({ '--fill': `${value * 100}%` });
   const activity=ACTIVITIES.find(p=>p.id===selectedActivity);
@@ -186,7 +188,7 @@ function App({initial}) {
       <div className="lengths glass"><h2><Icon name="clock"/>Session lengths</h2><p>Set a pace that works for you.</p><label className="tick-toggle auto-breaks">Automatic breaks<input aria-label="Automatic breaks" type="checkbox" checked={autoBreaks} onChange={e=>setAutoBreaks(e.target.checked)}/></label><p className="subtle">{autoBreaks?'A break starts after each completed session.':'Sessions finish without starting a break. You can take one manually.'}</p>{Object.entries(labels).map(([key,label])=><label className="duration" key={key}>{label}<span><input aria-label={`${label} minutes`} type="number" min="1" max="180" disabled={running} value={durations[key]} onChange={e=>{const value=Math.max(1,Math.min(180,Number(e.target.value)||1));if(key===mode)finishSession('reset');setMood('custom');setDurations({...durations,[key]:value});if(key===mode)setRemaining(value*60);}}/> min</span></label>)}{!focus?<BreakGuide running={running} activity={breakActivity} setActivity={setBreakActivity}/>:<div className="quiet-note"><Icon name="leaf"/><div><h3>A little space to breathe.</h3><p>A soft tick keeps time during breaks. Stretch, step outside, or put on your own music.</p></div></div>}</div>
     </section>
     </>}
-    {view==='studio'&&<Studio mix={{volume,binauralLevel,beat,trackId,layers}} setMix={setMix} presets={presets} setPresets={setPresets} applyMix={applyMix} activeMix={activeMix} reactive={reactive} setReactive={setReactive} showRewards={showRewards} setShowRewards={setShowRewards} animationMode={animationMode} setAnimationMode={setAnimationMode} reducedMotion={reducedMotion}/>}
+    {view==='studio'&&<Studio activity={selectedActivity} mix={{volume,binauralLevel,beat,trackId,layers}} setMix={setMix} presets={presets} setPresets={setPresets} applyMix={applyMix} activeMix={activeMix} reactive={reactive} setReactive={setReactive} showRewards={showRewards} setShowRewards={setShowRewards} animationMode={animationMode} setAnimationMode={setAnimationMode} reducedMotion={reducedMotion}/>}
     {view==='progress'&&<Progress sessions={sessions} setSessions={setSessions} showRewards={showRewards} theme={theme} setTheme={setTheme} exportBackup={exportBackup} restoreBackup={restoreBackup} activity={activity}/>}
     </div>
     <footer><span>One session at a time.</span><div className="footer-star" aria-hidden="true">✦</div><span>Keep listening at a comfortable volume.</span></footer>

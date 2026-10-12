@@ -9,7 +9,7 @@ on:
       tag:
         description: Existing version tag to publish
         required: true
-        default: v3.0.0
+        default: v3.0.1
 
 permissions:
   contents: write
@@ -54,6 +54,6 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             gh release upload $env:RELEASE_TAG $archive.FullName --repo $env:GITHUB_REPOSITORY --clobber
           } else {
-            gh release create $env:RELEASE_TAG $archive.FullName --repo $env:GITHUB_REPOSITORY --verify-tag --title "Focus Beat $env:RELEASE_TAG" --notes "Activity profiles for Study, Work, Chores, and Creative, each with its own animated theme and saved preferences. Includes 120 generated tracks, 20 milestones with progress indicators, activity-filtered history, and optional Creative breaks. Animation On now enables visibly flowing waves even when the system requests reduced motion; Follow system and Off remain available. Existing history and saved mixes are preserved. Download the ZIP, extract all files, and launch Focus Beat.exe. This build is unsigned."
+            gh release create $env:RELEASE_TAG $archive.FullName --repo $env:GITHUB_REPOSITORY --verify-tag --title "Focus Beat $env:RELEASE_TAG" --notes "Five distinct Sound Studio mixes for each activity (20 total), stronger animated waves, and improved timer bookkeeping when pausing or changing sounds during a session. Existing history and saved mixes are preserved. Download the ZIP, extract all files, and launch Focus Beat.exe. This build is unsigned."
           }
           if ($LASTEXITCODE -ne 0) { throw 'GitHub release publication failed' }
